@@ -12,6 +12,8 @@ body {
 }
 
 #app {
+  /* display: flex;
+  flex-direction: column; */
   margin: 0 auto;
   font-weight: normal;
   max-width: 800px !important;

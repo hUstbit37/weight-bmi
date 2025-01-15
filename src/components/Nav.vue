@@ -1,11 +1,26 @@
+<script setup lang="ts">
+import { computed } from 'vue';
+import { RouterLink } from 'vue-router';
+import { useStore } from 'vuex';
+
+const store = useStore()
+const user = computed(() => store.state.user)
+</script>
 <template>
     <header>
         <div class="container">
             <div id="logo">Weight Tracker</div>
             <nav>
                 <ul class="nav-links">
-                    <li><a href="#">Login</a></li>
-                    <li><a href="#">Signup</a></li>
+                    <li><RouterLink to="/">Home</RouterLink></li>
+                    <template v-if="user">
+                        <li>Login as {{ user.email }}</li>
+                        <li><a @click.prevent="store.dispatch('signOut')">Logout</a></li>
+                    </template>
+                    <template v-else>
+                        <li><RouterLink to="/login">Login</RouterLink></li>
+                        <li><RouterLink to="/signup">Signup</RouterLink></li>
+                    </template>
                 </ul>
             </nav>
         </div>
@@ -42,7 +57,7 @@ nav {
 
 .nav-links li {
     display: inline-block;
-    margin-left: 20px;
+    /* margin-left: 20px; */
 }
 
 .nav-links li a {
