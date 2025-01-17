@@ -81,7 +81,4 @@ form .btn {
     color: hotpink;
     border-left-color: hotpink;
 }
-.error {
-    color: red;
-}
 </style>

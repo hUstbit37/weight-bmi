@@ -1,23 +1,58 @@
 <script setup>
-import { computed, nextTick, ref, shallowRef, watch } from 'vue';
+import { nextTick, onMounted, ref, shallowRef, watch } from 'vue';
 import { Chart } from 'chart.js/auto';
+import { collection, addDoc, getDocs, query, where, orderBy, limit } from "firebase/firestore"; 
+import { db } from '@/firebase/config';
 
+const error = ref(null)
 const weights = ref([])
 const weightChartEl = ref(null)
 const weightChart = shallowRef(null)
-const weightInput = ref(60)
-const currentWeight = computed(() => {
-    return weights.value.sort((a, b) => b.date - a.date)[0] || { weight: 0 }
-})
+const weightInput = ref(null)
+const currentWeight = ref([])
+const props = defineProps(['user'])
 
-const addWeight = () => {
-    weights.value.push({
-        weight: weightInput.value,
-        date: new Date().getTime()
+const vFocus = { mounted: (el) => el.focus() }
+
+const fetchWeights = async () => {
+    const q = query(collection(db, 'weights'), where('userId', '==', props.user.uid), orderBy('date', 'desc'), limit(7))
+    const data = await getDocs(q)
+    const tmp = []
+    data.forEach((doc) => {
+        tmp.push({
+            weight: doc.data().weight,
+            date: doc.data().date
+        })
     })
+    weights.value = tmp
+    if (tmp.length > 0) {
+        currentWeight.value = tmp[0]
+    }
+}
+onMounted(() => {
+    fetchWeights()
+})
+const addWeight = async () => {
+    try {
+        const data = {
+            weight: weightInput.value,
+            date: new Date().getTime(),
+            userId: props.user.uid,
+            email: props.user.email
+        }
+        const doc = await addDoc(collection(db, 'weights'), data)
+        weights.value.unshift({
+            weight: data.weight,
+            date: data.date
+        })
+    } catch (err) {
+        error.value = "Incorrect weight  or access denied"
+        console.log(err);
+    }
 }
 watch(weights, newWeights => {
     const ws = [...newWeights]
+    
     //Nếu khi có biểu đồ ta chỉ có thể cập nhật biểu đồ (chứ k tạo biểu đồ mới)
     if (weightChart.value) {
         weightChart.value.data.labels = ws.sort((a, b) => a.date - b.date).map(w => new Date(w.date).toLocaleDateString()).slice(-7)
@@ -48,19 +83,23 @@ watch(weights, newWeights => {
         })
     })
 }, { deep: true })
+
 </script>
 <template>
     <main>
-        <h1>Wellcom</h1>
+        <h1>Wellcome {{ user.email }}</h1>
         <div class="current">
             <span>{{ currentWeight.weight }}</span>
             <small>Current weight</small>
         </div>
+        <div v-if="error">
+            <p class="error">{{ error }}</p>
+        </div>
         <form class="form-weight" @submit.prevent="addWeight">
-            <input type="number" step="0.1" v-model="weightInput">
+            <input type="number" class="weight-input" min="1" step="0.1" v-model="weightInput" v-focus placeholder="Enter your weight today...">
             <input type="submit" value="Add weight">
         </form>
-
+        
         <div v-if="weights && weights.length > 0">
             <h2>Last 7 days</h2>
             <div class="canvas-box">
@@ -143,7 +182,7 @@ form.form-weight:hover {
     border-width: 2px;
 }
 
-form.form-weight input[type="number"] {
+form.form-weight .weight-input {
     appearance: none;
     outline: none;
     border: none;
